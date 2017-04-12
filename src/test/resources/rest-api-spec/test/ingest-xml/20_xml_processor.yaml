@@ -1,0 +1,36 @@
+---
+"Test xml processor with defaults":
+  - do:
+      ingest.put_pipeline:
+        id: "my_pipeline"
+        body: 
+          {
+            "description": "_description",
+            "processors": [
+              {
+                "xml" : {
+                  "field" : "message",
+                }
+              }
+            ]
+          }
+  - match: { acknowledged: true }
+
+  - do:
+      index:
+        index: test
+        type: test
+        id: 1
+        pipeline: "my_pipeline"
+        body: {message: "<event time=\"time_value\" name=\"name_value\" uid=\"uid_value\">event_value</event>"}
+
+  - do:
+      get:
+        index: test
+        type: test
+        id: 1
+  - match: { _source.message: "<event time=\"time_value\" name=\"name_value\" uid=\"uid_value\">event_value</event>" }
+  - match: { _source.event-time: "time_value" }
+  - match: { _source.event-name: "name_value" }
+  - match: { _source.event-uid: "uid_value" }
+  - match: { _source.event-value: "event_value" }

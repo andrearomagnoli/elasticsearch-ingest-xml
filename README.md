@@ -21,6 +21,21 @@ root-event3.content : event3
 ```
 It also includes and `exclude` optional parameter: all fields that match the REGEX will be discarded. For example, `root-event2(.*)` will exclude the second record in the previus example.
 
+If you have more tags with the same name, the plugin will name them with an incremental number.
+```
+<root>
+    <event>event1</event>
+    <event>event2</event>
+    <event>event3</event>
+</root>
+```
+In the previous example, the algorithm will create three key-values pairs:
+```
+root-event.content : event1
+root-event2.content : event2
+root-event3.content : event3
+```
+
 ## Usage
 
 

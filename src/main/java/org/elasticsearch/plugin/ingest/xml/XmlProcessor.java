@@ -17,6 +17,7 @@
 
 package org.elasticsearch.plugin.ingest.xml;
 
+import static org.elasticsearch.ingest.ConfigurationUtils.readStringProperty;
 import static org.w3c.dom.Node.ELEMENT_NODE;
 import static org.w3c.dom.Node.TEXT_NODE;
 
@@ -28,6 +29,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ByteArrayInputStream;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 
@@ -35,8 +38,6 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NamedNodeMap;
-
-import static org.elasticsearch.ingest.ConfigurationUtils.readStringProperty;
 
 public class XmlProcessor extends AbstractProcessor {
 
@@ -56,23 +57,33 @@ public class XmlProcessor extends AbstractProcessor {
 
         if( xml != null && !xml.isEmpty() ) {
 
+            List<Field> fields = new ArrayList<Field>();
+
             // Parsing
             InputStream stream = new ByteArrayInputStream( xml.getBytes( "utf-8" ) );
             Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse( stream );
 
             // Processing
             Node root = doc.getDocumentElement();
-            visitTree( root, true, "", ingestDocument ); 
+            visitTree( root, true, false, "", ingestDocument, fields ); 
         }
     }
 
     // DFS search of the tree
-    private void visitTree( Node node, boolean isRoot, String fieldKey, IngestDocument ingestDocument ) {
+    private void visitTree( Node node, boolean isRoot, boolean isChild, 
+            String fieldKey, IngestDocument ingestDocument, List<Field> fields ) {
 
-        if( isRoot )
+        if( isRoot ) {
             fieldKey = node.getNodeName();
-        else 
-            fieldKey = fieldKey+"-"+node.getNodeName();
+            fields = trackField( fields, fieldKey );
+            fieldKey = updateField( fields, fieldKey );
+        }
+        else {
+            if( isChild ) 
+                fieldKey = fieldKey+"-"+node.getNodeName();
+            fields = trackField( fields, fieldKey );
+            fieldKey = updateField( fields, fieldKey );
+        }
 
         if( node.getNodeType() == ELEMENT_NODE ) {
 
@@ -80,13 +91,13 @@ public class XmlProcessor extends AbstractProcessor {
 
             // Visit child first
             if( node.hasChildNodes() ){
-                visitTree( node.getFirstChild(), false, fieldKey, ingestDocument );
+                visitTree( node.getFirstChild(), false, true, fieldKey, ingestDocument, fields );
             }
 
             // Visit siblings next
             Node sibling = node.getNextSibling();
             if( sibling != null ) {
-                visitTree( sibling, isRoot, fieldKey, ingestDocument );
+                visitTree( sibling, isRoot, false, fieldKey, ingestDocument, fields );
             }
         }
     }
@@ -115,6 +126,36 @@ public class XmlProcessor extends AbstractProcessor {
         ingestDocument.setFieldValue( fieldKey+"-content", node.getNodeValue() );
     }
 
+    // Increase by 1 the count if the field is present, or create it if it's not there
+    private List<Field> trackField( List<Field> fields, String fieldKey ) {
+        if( fields.size() == 0 ) {
+            fields.add( new Field( fieldKey ) );
+            return fields;
+        }
+        for( int i=0; i<fields.size(); i++ ){
+            if( fields.get(i).getName().equals( fieldKey ) ) {
+                fields.get(i).increase();
+                return fields;
+            }
+        }
+        fields.add( new Field( fieldKey ) );
+        return fields;
+    }
+    
+    // If two tags have the same name, concatenate an incremental integer to the duplicated tag
+    private String updateField( List<Field> fields, String fieldKey ) {
+        int index = 0;
+        for( int i=0; i<fields.size(); i++ ) {
+            if( fields.get(i).getName().equals( fieldKey ) ) {
+                index = fields.get(i).getCount();
+                break;
+            }
+        }
+        if( index > 1 )
+            fieldKey = fieldKey+index;
+        return fieldKey;
+    }
+
     @Override
     public String getType() {
         return TYPE;
@@ -131,3 +172,4 @@ public class XmlProcessor extends AbstractProcessor {
         }
     }
 }
+

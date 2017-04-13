@@ -33,4 +33,4 @@
   - match: { _source.event-time: "time_value" }
   - match: { _source.event-name: "name_value" }
   - match: { _source.event-uid: "uid_value" }
-  - match: { _source.event-value: "event_value" }
+  - match: { _source.event-content: "event_value" }

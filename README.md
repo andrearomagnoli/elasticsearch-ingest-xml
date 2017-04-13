@@ -1,7 +1,8 @@
 # Elasticsearch xml Ingest Processor
 
-This is a domain-specific data ingestion plugin.
-It extracts defined field from attributes and values of the XML.
+This is a generic XML data ingestion plugin.
+It automatically extracts fields and values from attributes and contents of the XML, without using an XML schema or XPATH.
+This plugin uses a DFS algorithm inside the XML structure.
 
 ## Usage
 
@@ -59,6 +60,8 @@ If you need to work on a different version, you can try to change the setting in
 
 ## Bugs & TODO
 
-* Create a more generic version, that accepts XSD and XPATH to define which fields are contained and what save
-* Add more tests
+* Define a variable `exclude` or `include` to filter certains fields
+* Define a variable to specify the name of the fields with the `content` of a tag. Now it is `content`: What happens if there is an attribute called `content` as well?
+* Define a custom char to separate each field of the path. Now it is `-` (please note that `.` returns error)
+* Test with more XML, now the testing section is quite basic
 

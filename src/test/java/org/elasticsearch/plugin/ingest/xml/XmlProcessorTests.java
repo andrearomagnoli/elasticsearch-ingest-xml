@@ -41,7 +41,7 @@ public class XmlProcessorTests extends ESTestCase {
         assertThat(data, hasKey("event-time"));
         assertThat(data, hasKey("event-name"));
         assertThat(data, hasKey("event-uid"));
-        assertThat(data, hasKey("event-value"));
+        assertThat(data, hasKey("event-content"));
     }
 }
 

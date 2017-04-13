@@ -17,6 +17,9 @@
 
 package org.elasticsearch.plugin.ingest.xml;
 
+import static org.w3c.dom.Node.ELEMENT_NODE;
+import static org.w3c.dom.Node.TEXT_NODE;
+
 import org.elasticsearch.ingest.AbstractProcessor;
 import org.elasticsearch.ingest.IngestDocument;
 import org.elasticsearch.ingest.Processor;
@@ -24,13 +27,14 @@ import org.elasticsearch.ingest.Processor;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamConstants;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NamedNodeMap;
 
 import static org.elasticsearch.ingest.ConfigurationUtils.readStringProperty;
 
@@ -48,65 +52,67 @@ public class XmlProcessor extends AbstractProcessor {
     @Override
     public void execute(IngestDocument ingestDocument) throws Exception {
 
-        String eventTime = null;
-        String eventName = null;
-        String eventUid = null;
-        String eventValue = null;
+        String xml = ingestDocument.getFieldValue(field, String.class);
 
-        String buffer = null;
-        String content = ingestDocument.getFieldValue(field, String.class);
+        if( xml != null && !xml.isEmpty() ) {
 
-        if( content != null && !content.isEmpty() && content.startsWith("<event" ) ) {
+            // Parsing
+            InputStream stream = new ByteArrayInputStream( xml.getBytes( "utf-8" ) );
+            Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse( stream );
 
-            InputStream stream = new ByteArrayInputStream( content.getBytes( StandardCharsets.UTF_8 ) );
-            XMLInputFactory factory = XMLInputFactory.newInstance();
-            XMLStreamReader reader = factory.createXMLStreamReader( stream );
+            // Processing
+            Node root = doc.getDocumentElement();
+            visitTree( root, true, "", ingestDocument ); 
+        }
+    }
 
-            while( reader.hasNext() ) { 
-                int event = reader.next();
+    // DFS search of the tree
+    private void visitTree( Node node, boolean isRoot, String fieldKey, IngestDocument ingestDocument ) {
 
-                switch( event ) {
+        if( isRoot )
+            fieldKey = node.getNodeName();
+        else 
+            fieldKey = fieldKey+"-"+node.getNodeName();
 
-                    case XMLStreamConstants.START_ELEMENT: 
-                        if( "event".equals( reader.getLocalName() ) ) {
-                            for( int i=0; i<reader.getAttributeCount(); i++ ) {
-                                String attribute = reader.getAttributeLocalName(i);
+        if( node.getNodeType() == ELEMENT_NODE ) {
 
-                                switch( attribute ) {
-                                    case "time" :
-                                        eventTime = reader.getAttributeValue(i);
-                                        break;
-                                    case "name" :
-                                        eventName = reader.getAttributeValue(i);
-                                        break;
-                                    case "uid" :
-                                        eventUid = reader.getAttributeValue(i);
-                                        break;
-                                    default :
-                                        break;
-                                }
-                            }
-                        }
-                        break;
+            readNode( node, fieldKey, ingestDocument );
 
-                    case XMLStreamConstants.CHARACTERS: 
-                        buffer = reader.getText().trim();
-                        break;
-
-                    case XMLStreamConstants.END_ELEMENT: 
-                        eventValue = buffer;
-                        break;
-
-                    default : 
-                        break;            
-                }
+            // Visit child first
+            if( node.hasChildNodes() ){
+                visitTree( node.getFirstChild(), false, fieldKey, ingestDocument );
             }
 
-            ingestDocument.setFieldValue( "event-time", eventTime );
-            ingestDocument.setFieldValue( "event-name", eventName );
-            ingestDocument.setFieldValue( "event-uid", eventUid );
-            ingestDocument.setFieldValue( "event-value", eventValue );
+            // Visit siblings next
+            Node sibling = node.getNextSibling();
+            if( sibling != null ) {
+                visitTree( sibling, isRoot, fieldKey, ingestDocument );
+            }
         }
+    }
+
+    // Read node content, save attributes and content (if it hasn't children)
+    private void readNode( Node node, String fieldKey, IngestDocument ingestDocument ) {
+        if( node.hasAttributes() )
+            saveAttributes( node, fieldKey, ingestDocument );
+        if( node.hasChildNodes() && node.getChildNodes().getLength()==1 && node.getFirstChild().getNodeType()==TEXT_NODE )
+            saveContent( node.getFirstChild(), fieldKey, ingestDocument );
+    }
+
+    // Save attributes of the given node
+    private void saveAttributes( Node node, String fieldKey, IngestDocument ingestDocument ) {
+        NamedNodeMap attributes = node.getAttributes();
+        if( attributes != null ) {
+            for( int i=0; i<attributes.getLength(); i++ ) {
+                Node attribute = attributes.item(i);
+                ingestDocument.setFieldValue( fieldKey+"-"+attribute.getNodeName(), attribute.getNodeValue() );
+            }
+        }
+    }
+
+    // Save content of the given node
+    private void saveContent( Node node, String fieldKey, IngestDocument ingestDocument ) {
+        ingestDocument.setFieldValue( fieldKey+"-content", node.getNodeValue() );
     }
 
     @Override

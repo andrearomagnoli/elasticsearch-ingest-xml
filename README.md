@@ -4,6 +4,21 @@ This is a generic XML data ingestion plugin.
 It automatically extracts fields and values from attributes and contents of the XML, without using an XML schema or XPATH.
 This plugin uses a DFS algorithm inside the XML structure.
 
+If you have more tags with the same name, the plugin will name them with an incremental number.
+```
+<root>
+    <event>event1</event>
+    <event>event2</event>
+    <event>event3</event>
+</root>
+```
+In the previous example, the algorithm will create three key-values pairs:
+```
+root-event.content : event1
+root-event2.content : event2
+root-event3.content : event3
+```
+
 ## Usage
 
 

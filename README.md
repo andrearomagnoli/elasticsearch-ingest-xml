@@ -3,6 +3,7 @@
 This is a generic XML data ingestion plugin.
 It automatically extracts fields and values from attributes and contents of the XML, without using an XML schema or XPATH.
 This plugin uses a DFS algorithm inside the XML structure.
+The most important constraint is that the XML must be well formed, with a root tag that contains all other tags.
 
 If you have more tags with the same name, the plugin will name them with an incremental number.
 ```
@@ -18,6 +19,7 @@ root-event.content : event1
 root-event2.content : event2
 root-event3.content : event3
 ```
+It also includes and `exclude` optional parameter: all fields that match the REGEX will be discarded. For example, `root-event2(.*)` will exclude the second record in the previus example.
 
 ## Usage
 
@@ -29,7 +31,8 @@ PUT _ingest/pipeline/xml-pipeline
   "processors": [
     {
       "xml" : {
-        "field" : "message"
+        "field" : "message",
+        "exclude" : ["root-event2(.*)"]
       }
     }
   ]
@@ -42,7 +45,7 @@ POST _ingest/pipeline/xml-pipeline/_simulate
       "_source" :
         {
           "source" : "/path/to/the/file",
-          "message" : "<event time=\"time_value\" name=\"name_value\" uid=\"uid_value\">event_value</event>"
+          "message" : "<root><event time=\"time_value\" name=\"name_value\" uid=\"uid_value\">event_value1</event><event>event_value2</event></root>"
         }
     }
   ]
@@ -54,6 +57,7 @@ POST _ingest/pipeline/xml-pipeline/_simulate
 | Parameter | Use | Required |
 | --- | --- | --- |
 | field   | The string that contains the XML document to parse. | Yes |
+| exclude | Pattern that match this REGEX will be discarded (check `java.lang.String.matches` for the correct syntax). | No |
 
 ## Setup
 

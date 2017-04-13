@@ -23,9 +23,12 @@ import org.elasticsearch.test.ESTestCase;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 
 public class XmlProcessorTests extends ESTestCase {
 
@@ -34,7 +37,8 @@ public class XmlProcessorTests extends ESTestCase {
         document.put("source_field", "<event time=\"time_value\" name=\"name_value\" uid=\"uid_value\">event_value</event>");
         IngestDocument ingestDocument = RandomDocumentPicks.randomIngestDocument(random(), document);
 
-        XmlProcessor processor = new XmlProcessor(randomAsciiOfLength(10), "source_field");
+        List<String> exclude = new ArrayList<String>();
+        XmlProcessor processor = new XmlProcessor(randomAsciiOfLength(10), "source_field", exclude);
         processor.execute(ingestDocument);
         Map<String, Object> data = ingestDocument.getSourceAndMetadata();
 
@@ -53,7 +57,8 @@ public class XmlProcessorTests extends ESTestCase {
         document.put("source_field", "<root><event>event_value_a</event><event>event_value_b</event></root>");
         IngestDocument ingestDocument = RandomDocumentPicks.randomIngestDocument(random(), document);
 
-        XmlProcessor processor = new XmlProcessor(randomAsciiOfLength(10), "source_field");
+        List<String> exclude = new ArrayList<String>();
+        XmlProcessor processor = new XmlProcessor(randomAsciiOfLength(10), "source_field", exclude);
         processor.execute(ingestDocument);
         Map<String, Object> data = ingestDocument.getSourceAndMetadata();
 
@@ -61,6 +66,22 @@ public class XmlProcessorTests extends ESTestCase {
         assertThat(data.get("root-event-content"), is("event_value_a"));
         assertThat(data, hasKey("root-event2-content"));
         assertThat(data.get("root-event2-content"), is("event_value_b"));
+    }
+
+    public void testExclude() throws Exception {
+        Map<String, Object> document = new HashMap<>();
+        document.put("source_field", "<root><event>event_value_a</event><event>event_value_b</event></root>");
+        IngestDocument ingestDocument = RandomDocumentPicks.randomIngestDocument(random(), document);
+
+        List<String> exclude = new ArrayList<String>();
+        exclude.add("root-event2(.*)");
+        XmlProcessor processor = new XmlProcessor(randomAsciiOfLength(10), "source_field", exclude);
+        processor.execute(ingestDocument);
+        Map<String, Object> data = ingestDocument.getSourceAndMetadata();
+
+        assertThat(data, hasKey("root-event-content"));
+        assertThat(data.get("root-event-content"), is("event_value_a"));
+        assertThat(data, not(hasKey("root-event2-content")));
     }
 }
 

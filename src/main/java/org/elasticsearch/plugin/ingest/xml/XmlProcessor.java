@@ -18,6 +18,8 @@
 package org.elasticsearch.plugin.ingest.xml;
 
 import static org.elasticsearch.ingest.ConfigurationUtils.readStringProperty;
+import static org.elasticsearch.ingest.ConfigurationUtils.readOptionalList;
+
 import static org.w3c.dom.Node.ELEMENT_NODE;
 import static org.w3c.dom.Node.TEXT_NODE;
 
@@ -44,10 +46,12 @@ public class XmlProcessor extends AbstractProcessor {
     public static final String TYPE = "xml";
 
     private final String field;
+    private final List<String> exclude;
 
-    public XmlProcessor(String tag, String field) throws IOException {
+    public XmlProcessor(String tag, String field, List<String> exclude) throws IOException {
         super(tag);
         this.field = field;
+        this.exclude = exclude;
     }
 
     @Override
@@ -116,14 +120,36 @@ public class XmlProcessor extends AbstractProcessor {
         if( attributes != null ) {
             for( int i=0; i<attributes.getLength(); i++ ) {
                 Node attribute = attributes.item(i);
-                ingestDocument.setFieldValue( fieldKey+"-"+attribute.getNodeName(), attribute.getNodeValue() );
+                String name = fieldKey+"-"+attribute.getNodeName();
+                boolean addField = true;
+                if( exclude != null && exclude.size()>0 ) {
+                    for( int j=0; j<exclude.size(); j++ ) {
+                        if( name.matches( exclude.get(j) ) ) {
+                            addField = false;
+                            break;
+                        }
+                    }
+                }
+                if( addField )
+                    ingestDocument.setFieldValue( name, attribute.getNodeValue() );
             }
         }
     }
 
     // Save content of the given node
     private void saveContent( Node node, String fieldKey, IngestDocument ingestDocument ) {
-        ingestDocument.setFieldValue( fieldKey+"-content", node.getNodeValue() );
+        String name = fieldKey+"-content";
+        boolean addField = true;
+        if( exclude != null && exclude.size()>0 ) {
+            for( int i=0; i<exclude.size(); i++ ) {
+                if( name.matches( exclude.get(i) ) ) {
+                    addField = false;
+                    break;
+                }
+            }
+        }
+        if( addField )
+            ingestDocument.setFieldValue( name, node.getNodeValue() );
     }
 
     // Increase by 1 the count if the field is present, or create it if it's not there
@@ -166,9 +192,11 @@ public class XmlProcessor extends AbstractProcessor {
         @Override
         public XmlProcessor create(Map<String, Processor.Factory> factories, String tag, Map<String, Object> config) 
             throws Exception {
-            String field = readStringProperty(TYPE, tag, config, "field");
 
-            return new XmlProcessor(tag, field);
+            String field = readStringProperty(TYPE, tag, config, "field");
+            List<String> exclude = readOptionalList(TYPE, tag, config, "exclude");
+
+            return new XmlProcessor(tag, field, exclude);
         }
     }
 }

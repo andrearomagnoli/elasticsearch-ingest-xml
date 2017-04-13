@@ -30,7 +30,7 @@
         type: test
         id: 1
   - match: { _source.message: "<event time=\"time_value\" name=\"name_value\" uid=\"uid_value\">event_value</event>" }
-  - match: { _source.event-time: "time_value" }
-  - match: { _source.event-name: "name_value" }
-  - match: { _source.event-uid: "uid_value" }
-  - match: { _source.event-content: "event_value" }
+  - match: { _source.event@time: "time_value" }
+  - match: { _source.event@name: "name_value" }
+  - match: { _source.event@uid: "uid_value" }
+  - match: { _source.event: "event_value" }

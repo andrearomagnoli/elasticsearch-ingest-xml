@@ -42,14 +42,14 @@ public class XmlProcessorTests extends ESTestCase {
         processor.execute(ingestDocument);
         Map<String, Object> data = ingestDocument.getSourceAndMetadata();
 
-        assertThat(data, hasKey("event-time"));
-        assertThat(data.get("event-time"), is("time_value"));
-        assertThat(data, hasKey("event-name"));
-        assertThat(data.get("event-name"), is("name_value"));
-        assertThat(data, hasKey("event-uid"));
-        assertThat(data.get("event-uid"), is("uid_value"));
-        assertThat(data, hasKey("event-content"));
-        assertThat(data.get("event-content"), is("event_value"));
+        assertThat(data, hasKey("event@time"));
+        assertThat(data.get("event@time"), is("time_value"));
+        assertThat(data, hasKey("event@name"));
+        assertThat(data.get("event@name"), is("name_value"));
+        assertThat(data, hasKey("event@uid"));
+        assertThat(data.get("event@uid"), is("uid_value"));
+        assertThat(data, hasKey("event"));
+        assertThat(data.get("event"), is("event_value"));
     }
 
     public void testMultipleTags() throws Exception {
@@ -62,15 +62,15 @@ public class XmlProcessorTests extends ESTestCase {
         processor.execute(ingestDocument);
         Map<String, Object> data = ingestDocument.getSourceAndMetadata();
 
-        assertThat(data, hasKey("root-event-content"));
-        assertThat(data.get("root-event-content"), is("event_value_a"));
-        assertThat(data, hasKey("root-event2-content"));
-        assertThat(data.get("root-event2-content"), is("event_value_b"));
+        assertThat(data, hasKey("root-event"));
+        assertThat(data.get("root-event"), is("event_value_a"));
+        assertThat(data, hasKey("root-event2"));
+        assertThat(data.get("root-event2"), is("event_value_b"));
     }
 
     public void testExclude() throws Exception {
         Map<String, Object> document = new HashMap<>();
-        document.put("source_field", "<root><event>event_value_a</event><event>event_value_b</event></root>");
+        document.put("source_field", "<root><event>event_value_a</event><event test=\"test_value\">event_value_b</event></root>");
         IngestDocument ingestDocument = RandomDocumentPicks.randomIngestDocument(random(), document);
 
         List<String> exclude = new ArrayList<String>();
@@ -79,9 +79,9 @@ public class XmlProcessorTests extends ESTestCase {
         processor.execute(ingestDocument);
         Map<String, Object> data = ingestDocument.getSourceAndMetadata();
 
-        assertThat(data, hasKey("root-event-content"));
-        assertThat(data.get("root-event-content"), is("event_value_a"));
-        assertThat(data, not(hasKey("root-event2-content")));
+        assertThat(data, hasKey("root-event"));
+        assertThat(data.get("root-event"), is("event_value_a"));
+        assertThat(data, not(hasKey("root-event2")));
     }
 }
 

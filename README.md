@@ -6,35 +6,25 @@ This plugin uses a DFS algorithm inside the XML structure.
 The most important constraint is that the XML must be well formed, with a root tag that contains all other tags.
 
 If you have more tags with the same name, the plugin will name them with an incremental number.
-```
-<root>
-    <event>event1</event>
-    <event>event2</event>
-    <event>event3</event>
-</root>
-```
-In the previous example, the algorithm will create three key-values pairs:
-```
-root-event.content : event1
-root-event2.content : event2
-root-event3.content : event3
-```
-It also includes and `exclude` optional parameter: all fields that match the REGEX will be discarded. For example, `root-event2(.*)` will exclude the second record in the previus example.
 
-If you have more tags with the same name, the plugin will name them with an incremental number.
 ```
 <root>
     <event>event1</event>
-    <event>event2</event>
+    <event attr="attr_value">event2</event>
     <event>event3</event>
 </root>
 ```
-In the previous example, the algorithm will create three key-values pairs:
+
+In the previous example, the algorithm will create four key-values pairs:
+
 ```
-root-event.content : event1
-root-event2.content : event2
-root-event3.content : event3
+root-event : event1
+root-event2 : event2
+root-event2@attr : attr_value
+root-event3 : event3
 ```
+
+It also includes and `exclude` optional parameter: all fields that match the REGEX will be discarded. For example, `root-event2(.*)` will exclude the second and the third record in the previous example.
 
 ## Usage
 
@@ -94,8 +84,5 @@ If you need to work on a different version, you can try to change the setting in
 
 ## Bugs & TODO
 
-* Define a variable `exclude` or `include` to filter certains fields
-* Define a variable to specify the name of the fields with the `content` of a tag. Now it is `content`: What happens if there is an attribute called `content` as well?
-* Define a custom char to separate each field of the path. Now it is `-` (please note that `.` returns error)
-* Test with more XML, now the testing section is quite basic
+* Define a custom char to separate each field of the path. Now it is `-` (please note that `.` returns error) and `@` for attributes
 

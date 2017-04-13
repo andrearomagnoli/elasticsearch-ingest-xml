@@ -120,7 +120,7 @@ public class XmlProcessor extends AbstractProcessor {
         if( attributes != null ) {
             for( int i=0; i<attributes.getLength(); i++ ) {
                 Node attribute = attributes.item(i);
-                String name = fieldKey+"-"+attribute.getNodeName();
+                String name = fieldKey+"@"+attribute.getNodeName();
                 boolean addField = true;
                 if( exclude != null && exclude.size()>0 ) {
                     for( int j=0; j<exclude.size(); j++ ) {
@@ -138,18 +138,17 @@ public class XmlProcessor extends AbstractProcessor {
 
     // Save content of the given node
     private void saveContent( Node node, String fieldKey, IngestDocument ingestDocument ) {
-        String name = fieldKey+"-content";
         boolean addField = true;
         if( exclude != null && exclude.size()>0 ) {
             for( int i=0; i<exclude.size(); i++ ) {
-                if( name.matches( exclude.get(i) ) ) {
+                if( fieldKey.matches( exclude.get(i) ) ) {
                     addField = false;
                     break;
                 }
             }
         }
         if( addField )
-            ingestDocument.setFieldValue( name, node.getNodeValue() );
+            ingestDocument.setFieldValue( fieldKey, node.getNodeValue() );
     }
 
     // Increase by 1 the count if the field is present, or create it if it's not there

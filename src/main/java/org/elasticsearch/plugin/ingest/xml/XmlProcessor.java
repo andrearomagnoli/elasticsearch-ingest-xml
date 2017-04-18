@@ -77,14 +77,20 @@ public class XmlProcessor extends AbstractProcessor {
     private void visitTree( Node node, boolean isRoot, boolean isChild, 
             String fieldKey, IngestDocument ingestDocument, List<Field> fields ) {
 
+        String fieldKeyOrig = "";
+
         if( isRoot ) {
             fieldKey = node.getNodeName();
+            fieldKeyOrig = fieldKey;
             fields = trackField( fields, fieldKey );
             fieldKey = updateField( fields, fieldKey );
         }
         else {
-            if( isChild ) 
+            if( isChild ) {
                 fieldKey = fieldKey+"-"+node.getNodeName();
+                fieldKeyOrig = fieldKey;
+            }
+            fieldKeyOrig = fieldKey;
             fields = trackField( fields, fieldKey );
             fieldKey = updateField( fields, fieldKey );
         }
@@ -95,13 +101,13 @@ public class XmlProcessor extends AbstractProcessor {
 
             // Visit child first
             if( node.hasChildNodes() ){
-                visitTree( node.getFirstChild(), false, true, fieldKey, ingestDocument, fields );
+                visitTree( node.getFirstChild(), false, true, fieldKeyOrig, ingestDocument, fields );
             }
 
             // Visit siblings next
             Node sibling = node.getNextSibling();
             if( sibling != null ) {
-                visitTree( sibling, isRoot, false, fieldKey, ingestDocument, fields );
+                visitTree( sibling, isRoot, false, fieldKeyOrig, ingestDocument, fields );
             }
         }
     }
@@ -130,8 +136,9 @@ public class XmlProcessor extends AbstractProcessor {
                         }
                     }
                 }
-                if( addField )
+                if( addField ) {
                     ingestDocument.setFieldValue( name, attribute.getNodeValue() );
+                }
             }
         }
     }
@@ -147,16 +154,13 @@ public class XmlProcessor extends AbstractProcessor {
                 }
             }
         }
-        if( addField )
+        if( addField ) {
             ingestDocument.setFieldValue( fieldKey, node.getNodeValue() );
+        }
     }
 
     // Increase by 1 the count if the field is present, or create it if it's not there
     private List<Field> trackField( List<Field> fields, String fieldKey ) {
-        if( fields.size() == 0 ) {
-            fields.add( new Field( fieldKey ) );
-            return fields;
-        }
         for( int i=0; i<fields.size(); i++ ){
             if( fields.get(i).getName().equals( fieldKey ) ) {
                 fields.get(i).increase();
@@ -169,6 +173,7 @@ public class XmlProcessor extends AbstractProcessor {
     
     // If two tags have the same name, concatenate an incremental integer to the duplicated tag
     private String updateField( List<Field> fields, String fieldKey ) {
+        
         int index = 0;
         for( int i=0; i<fields.size(); i++ ) {
             if( fields.get(i).getName().equals( fieldKey ) ) {
@@ -178,6 +183,10 @@ public class XmlProcessor extends AbstractProcessor {
         }
         if( index > 1 )
             fieldKey = fieldKey+index;
+        else if( index == 0 ) {
+            fields.add( new Field( fieldKey ) );
+        }
+
         return fieldKey;
     }
 

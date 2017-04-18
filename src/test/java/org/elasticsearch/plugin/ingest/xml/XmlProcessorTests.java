@@ -83,5 +83,28 @@ public class XmlProcessorTests extends ESTestCase {
         assertThat(data.get("root-event"), is("event_value_a"));
         assertThat(data, not(hasKey("root-event2")));
     }
+
+    public void testComplex() throws Exception {
+        Map<String, Object> document = new HashMap<>();
+        document.put("source_field", 
+"<root><node><leaf attr=\"attr_value_a\">leaf_value1</leaf><leaf attr=\"attr_value_b\">leaf_value2</leaf></node></root>");
+        IngestDocument ingestDocument = RandomDocumentPicks.randomIngestDocument(random(), document);
+
+        List<String> exclude = new ArrayList<String>();
+        XmlProcessor processor = new XmlProcessor(randomAsciiOfLength(10), "source_field", exclude);
+        processor.execute(ingestDocument);
+        Map<String, Object> data = ingestDocument.getSourceAndMetadata();
+
+        assertThat(data, hasKey("root-node-leaf"));
+        assertThat(data.get("root-node-leaf"), is("leaf_value1"));
+        assertThat(data, hasKey("root-node-leaf@attr"));
+        assertThat(data.get("root-node-leaf@attr"), is("attr_value_a"));
+        assertThat(data, hasKey("root-node-leaf2"));
+        assertThat(data.get("root-node-leaf2"), is("leaf_value2"));
+        assertThat(data, hasKey("root-node-leaf2@attr"));
+        assertThat(data.get("root-node-leaf2@attr"), is("attr_value_b"));
+
+    }
+
 }
 

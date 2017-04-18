@@ -84,5 +84,6 @@ If you need to work on a different version, you can try to change the setting in
 
 ## Bugs & TODO
 
+* There is a bug reading the name of a node while visiting the tree
 * Define a custom char to separate each field of the path. Now it is `-` (please note that `.` returns error) and `@` for attributes
 

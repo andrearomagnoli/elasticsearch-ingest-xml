@@ -20,7 +20,7 @@ package org.elasticsearch.plugin.ingest.xml;
 import static org.elasticsearch.ingest.ConfigurationUtils.readStringProperty;
 import static org.elasticsearch.ingest.ConfigurationUtils.readOptionalList;
 
-import static org.w3c.dom.Node.ELEMENT_NODE;
+import static org.w3c.dom.Node.ATTRIBUTE_NODE;
 import static org.w3c.dom.Node.TEXT_NODE;
 
 import org.elasticsearch.ingest.AbstractProcessor;
@@ -89,7 +89,7 @@ public class XmlProcessor extends AbstractProcessor {
             fieldKey = updateField( fields, fieldKey );
         }
 
-        if( node.getNodeType() == ELEMENT_NODE ) {
+        if( node.getNodeType() != ATTRIBUTE_NODE ) {
 
             readNode( node, fieldKey, ingestDocument );
 

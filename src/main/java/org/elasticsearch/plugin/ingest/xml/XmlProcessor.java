@@ -79,40 +79,50 @@ public class XmlProcessor extends AbstractProcessor {
 
             // Processing
             Node root = doc.getDocumentElement();
-            visitTree( root, "", true, ingestDocument, fields ); 
+            visitTree( root, "", false, ingestDocument, fields ); 
         }
     }
 
     // DFS search of the tree
     private void visitTree( Node node, 
-                            String fieldKey,
+                            String parent,
                             boolean isChild,
                             IngestDocument ingestDocument,
                             List<Field> fields ) {
 
+        String fieldKey = "";
+
         switch( node.getNodeType() ){
 
             case ELEMENT_NODE :
-                if( fieldKey.equals("") )
+                if( !parent.equals("") )
+                    fieldKey = parent+"-"+node.getNodeName();
+                else
                     fieldKey = node.getNodeName();
-                else if( isChild )
-                    fieldKey = fieldKey+"-"+node.getNodeName();
-                fields = updateCount( fields, fieldKey );
-                fieldKey = updateField( fields, fieldKey );
+                fields = updateFieldsCount( fields, fieldKey );
+                fieldKey = concatCount( fields, fieldKey );
                 if( node.hasAttributes() )
                     saveAttributes( node, fieldKey, ingestDocument );
                 break;
-            case ENTITY_REFERENCE_NODE :
-                fieldKey = fieldKey+node.getNodeName();
-                fields = updateCount( fields, fieldKey );
-                fieldKey = updateField( fields, fieldKey );
-                break;
+//            case ENTITY_REFERENCE_NODE :
+//                fieldKey = fieldKey+node.getNodeName();
+//                fields = updateCount( fields, fieldKey );
+//                fieldKey = updateField( fields, fieldKey );
+//                break;
             case TEXT_NODE :
             case COMMENT_NODE :
             case CDATA_SECTION_NODE :
             case DOCUMENT_NODE :
-                if( checkExclude(fieldKey+node.getNodeName()) )
-                    ingestDocument.setFieldValue( fieldKey+node.getNodeName(), node.getNodeValue() );
+                if( parent.equals("") ){
+                    if( checkExclude(node.getParentNode().getNodeName()+node.getNodeName()) ){
+                        ingestDocument.setFieldValue( node.getParentNode().getNodeName()+node.getNodeName(), node.getNodeValue() );
+                    }
+                }
+                else{
+                    if( checkExclude(parent+node.getNodeName()) ){
+                        ingestDocument.setFieldValue( parent+node.getNodeName(), node.getNodeValue() );
+                    }
+                }
                 break;
 //            case ATTRIBUTE_NODE :
 //                break;
@@ -138,7 +148,7 @@ public class XmlProcessor extends AbstractProcessor {
         // Visit the Sibling
         Node sibling = node.getNextSibling();
         if( sibling != null ) {
-            visitTree( sibling, fieldKey, false, ingestDocument, fields );
+            visitTree( sibling, parent, false, ingestDocument, fields );
         }
     }
 
@@ -171,7 +181,7 @@ public class XmlProcessor extends AbstractProcessor {
     }
 
     // Increase by 1 the count if the field is present, or create it if it's not there
-    private List<Field> updateCount( List<Field> fields, String fieldKey ) {
+    private List<Field> updateFieldsCount( List<Field> fields, String fieldKey ) {
         for( int i=0; i<fields.size(); i++ ){
             if( fields.get(i).getName().equals( fieldKey ) ) {
                 fields.get(i).increase();
@@ -183,7 +193,7 @@ public class XmlProcessor extends AbstractProcessor {
     }
     
     // If two tags have the same name, concatenate an incremental integer to the duplicated tag
-    private String updateField( List<Field> fields, String fieldKey ) {
+    private String concatCount( List<Field> fields, String fieldKey ) {
         
         int index = 0;
         for( int i=0; i<fields.size(); i++ ) {
@@ -192,13 +202,8 @@ public class XmlProcessor extends AbstractProcessor {
                 break;
             }
         }
-        if( index > 1 )
-            fieldKey = fieldKey+index;
-        else if( index == 0 ) {
-            fields.add( new Field( fieldKey ) );
-        }
-
-        return fieldKey;
+        
+        return ( index>1 ? fieldKey+index : fieldKey );
     }
 
     @Override

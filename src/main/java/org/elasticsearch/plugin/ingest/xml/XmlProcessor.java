@@ -20,8 +20,18 @@ package org.elasticsearch.plugin.ingest.xml;
 import static org.elasticsearch.ingest.ConfigurationUtils.readStringProperty;
 import static org.elasticsearch.ingest.ConfigurationUtils.readOptionalList;
 
+import static org.w3c.dom.Node.ELEMENT_NODE;
 import static org.w3c.dom.Node.ATTRIBUTE_NODE;
 import static org.w3c.dom.Node.TEXT_NODE;
+import static org.w3c.dom.Node.CDATA_SECTION_NODE;
+import static org.w3c.dom.Node.ENTITY_REFERENCE_NODE;
+import static org.w3c.dom.Node.ENTITY_NODE;
+import static org.w3c.dom.Node.PROCESSING_INSTRUCTION_NODE;
+import static org.w3c.dom.Node.COMMENT_NODE;
+import static org.w3c.dom.Node.DOCUMENT_NODE;
+import static org.w3c.dom.Node.DOCUMENT_TYPE_NODE;
+import static org.w3c.dom.Node.DOCUMENT_FRAGMENT_NODE;
+import static org.w3c.dom.Node.NOTATION_NODE;
 
 import org.elasticsearch.ingest.AbstractProcessor;
 import org.elasticsearch.ingest.IngestDocument;
@@ -69,55 +79,81 @@ public class XmlProcessor extends AbstractProcessor {
 
             // Processing
             Node root = doc.getDocumentElement();
-            visitTree( root, true, false, "", ingestDocument, fields ); 
+            visitTree( root, "", true, ingestDocument, fields ); 
         }
     }
 
     // DFS search of the tree
-    private void visitTree( Node node, boolean isRoot, boolean isChild, 
-            String fieldKey, IngestDocument ingestDocument, List<Field> fields ) {
+    private void visitTree( Node node, 
+                            String fieldKey,
+                            boolean isChild,
+                            IngestDocument ingestDocument,
+                            List<Field> fields ) {
 
-        String fieldKeyOrig = "";
+        switch( node.getNodeType() ){
 
-        if( isRoot ) {
-            fieldKey = node.getNodeName();
-            fieldKeyOrig = fieldKey;
-            fields = trackField( fields, fieldKey );
-            fieldKey = updateField( fields, fieldKey );
+            case ELEMENT_NODE :
+                if( fieldKey.equals("") )
+                    fieldKey = node.getNodeName();
+                else if( isChild )
+                    fieldKey = fieldKey+"-"+node.getNodeName();
+                fields = updateCount( fields, fieldKey );
+                fieldKey = updateField( fields, fieldKey );
+                if( node.hasAttributes() )
+                    saveAttributes( node, fieldKey, ingestDocument );
+                break;
+            case ENTITY_REFERENCE_NODE :
+                fieldKey = fieldKey+node.getNodeName();
+                fields = updateCount( fields, fieldKey );
+                fieldKey = updateField( fields, fieldKey );
+                break;
+            case TEXT_NODE :
+            case COMMENT_NODE :
+            case CDATA_SECTION_NODE :
+            case DOCUMENT_NODE :
+                if( checkExclude(fieldKey+node.getNodeName()) )
+                    ingestDocument.setFieldValue( fieldKey+node.getNodeName(), node.getNodeValue() );
+                break;
+//            case ATTRIBUTE_NODE :
+//                break;
+//            case ENTITY_NODE :
+//                break;
+//            case PROCESSING_INSTRUCTION_NODE :
+//                break;
+//            case DOCUMENT_TYPE_NODE :
+//                break;
+//            case DOCUMENT_FRAGMENT_NODE :
+//                break;
+//            case NOTATION_NODE :
+//                break;
+            default :
+                break;
         }
-        else {
-            if( isChild ) {
-                fieldKey = fieldKey+"-"+node.getNodeName();
-                fieldKeyOrig = fieldKey;
-            }
-            fieldKeyOrig = fieldKey;
-            fields = trackField( fields, fieldKey );
-            fieldKey = updateField( fields, fieldKey );
+
+        // Visit the Child
+        if( node.hasChildNodes() ){
+            visitTree( node.getFirstChild(), fieldKey, true, ingestDocument, fields );
         }
 
-        if( node.getNodeType() != ATTRIBUTE_NODE ) {
-
-            readNode( node, fieldKey, ingestDocument );
-
-            // Visit child first
-            if( node.hasChildNodes() ){
-                visitTree( node.getFirstChild(), false, true, fieldKeyOrig, ingestDocument, fields );
-            }
-
-            // Visit siblings next
-            Node sibling = node.getNextSibling();
-            if( sibling != null ) {
-                visitTree( sibling, isRoot, false, fieldKeyOrig, ingestDocument, fields );
-            }
+        // Visit the Sibling
+        Node sibling = node.getNextSibling();
+        if( sibling != null ) {
+            visitTree( sibling, fieldKey, false, ingestDocument, fields );
         }
     }
 
-    // Read node content, save attributes and content (if it hasn't children)
-    private void readNode( Node node, String fieldKey, IngestDocument ingestDocument ) {
-        if( node.hasAttributes() )
-            saveAttributes( node, fieldKey, ingestDocument );
-        if( node.hasChildNodes() && node.getChildNodes().getLength()==1 && node.getFirstChild().getNodeType()==TEXT_NODE )
-            saveContent( node.getFirstChild(), fieldKey, ingestDocument );
+    // Check if you can add a value according to the exclude List
+    private boolean checkExclude( String value ){
+        boolean addField = true;
+        if( exclude != null && exclude.size()>0 ) {
+            for( int j=0; j<exclude.size(); j++ ) {
+                if( value.matches( exclude.get(j) ) ) {
+                    addField = false;
+                    break;
+                }
+            }
+        }
+        return addField;
     }
 
     // Save attributes of the given node
@@ -127,40 +163,15 @@ public class XmlProcessor extends AbstractProcessor {
             for( int i=0; i<attributes.getLength(); i++ ) {
                 Node attribute = attributes.item(i);
                 String name = fieldKey+"@"+attribute.getNodeName();
-                boolean addField = true;
-                if( exclude != null && exclude.size()>0 ) {
-                    for( int j=0; j<exclude.size(); j++ ) {
-                        if( name.matches( exclude.get(j) ) ) {
-                            addField = false;
-                            break;
-                        }
-                    }
-                }
-                if( addField ) {
+                if( checkExclude( name ) ) {
                     ingestDocument.setFieldValue( name, attribute.getNodeValue() );
                 }
             }
         }
     }
 
-    // Save content of the given node
-    private void saveContent( Node node, String fieldKey, IngestDocument ingestDocument ) {
-        boolean addField = true;
-        if( exclude != null && exclude.size()>0 ) {
-            for( int i=0; i<exclude.size(); i++ ) {
-                if( fieldKey.matches( exclude.get(i) ) ) {
-                    addField = false;
-                    break;
-                }
-            }
-        }
-        if( addField ) {
-            ingestDocument.setFieldValue( fieldKey, node.getNodeValue() );
-        }
-    }
-
     // Increase by 1 the count if the field is present, or create it if it's not there
-    private List<Field> trackField( List<Field> fields, String fieldKey ) {
+    private List<Field> updateCount( List<Field> fields, String fieldKey ) {
         for( int i=0; i<fields.size(); i++ ){
             if( fields.get(i).getName().equals( fieldKey ) ) {
                 fields.get(i).increase();

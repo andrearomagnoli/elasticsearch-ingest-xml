@@ -18,10 +18,10 @@ If you have more tags with the same name, the plugin will name them with an incr
 In the previous example, the algorithm will create four key-values pairs:
 
 ```
-root-event : event1
-root-event2 : event2
+root-event#text : event1
+root-event2#text : event2
 root-event2@attr : attr_value
-root-event3 : event3
+root-event3#text : event3
 ```
 
 It also includes and `exclude` optional parameter: all fields that match the REGEX will be discarded. For example, `root-event2(.*)` will exclude the second and the third record in the previous example.
@@ -84,6 +84,7 @@ If you need to work on a different version, you can try to change the setting in
 
 ## Bugs & TODO
 
-* There is a bug reading the name of a node while visiting the tree
+* Only basic DOM tags are implemented. Should be added the support for more advanced tags (all possible tags are in the code, commented out, to give a guideline)
+* The visit of attributes can be improved, according to the DOM logic checking the ATTRIBUTE_NODE type
 * Define a custom char to separate each field of the path. Now it is `-` (please note that `.` returns error) and `@` for attributes
 

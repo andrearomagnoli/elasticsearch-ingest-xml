@@ -48,8 +48,8 @@ public class XmlProcessorTests extends ESTestCase {
         assertThat(data.get("event@name"), is("name_value"));
         assertThat(data, hasKey("event@uid"));
         assertThat(data.get("event@uid"), is("uid_value"));
-        assertThat(data, hasKey("event"));
-        assertThat(data.get("event"), is("event_value"));
+        assertThat(data, hasKey("event#text"));
+        assertThat(data.get("event#text"), is("event_value"));
     }
 
     public void testMultipleTags() throws Exception {
@@ -62,10 +62,10 @@ public class XmlProcessorTests extends ESTestCase {
         processor.execute(ingestDocument);
         Map<String, Object> data = ingestDocument.getSourceAndMetadata();
 
-        assertThat(data, hasKey("root-event"));
-        assertThat(data.get("root-event"), is("event_value_a"));
-        assertThat(data, hasKey("root-event2"));
-        assertThat(data.get("root-event2"), is("event_value_b"));
+        assertThat(data, hasKey("root-event#text"));
+        assertThat(data.get("root-event#text"), is("event_value_a"));
+        assertThat(data, hasKey("root-event2#text"));
+        assertThat(data.get("root-event2#text"), is("event_value_b"));
     }
 
     public void testExclude() throws Exception {
@@ -79,9 +79,9 @@ public class XmlProcessorTests extends ESTestCase {
         processor.execute(ingestDocument);
         Map<String, Object> data = ingestDocument.getSourceAndMetadata();
 
-        assertThat(data, hasKey("root-event"));
-        assertThat(data.get("root-event"), is("event_value_a"));
-        assertThat(data, not(hasKey("root-event2")));
+        assertThat(data, hasKey("root-event#text"));
+        assertThat(data.get("root-event#text"), is("event_value_a"));
+        assertThat(data, not(hasKey("root-event2#text")));
     }
 
     public void testComplex() throws Exception {
@@ -95,12 +95,12 @@ public class XmlProcessorTests extends ESTestCase {
         processor.execute(ingestDocument);
         Map<String, Object> data = ingestDocument.getSourceAndMetadata();
 
-        assertThat(data, hasKey("root-node-leaf"));
-        assertThat(data.get("root-node-leaf"), is("leaf_value1"));
+        assertThat(data, hasKey("root-node-leaf#text"));
+        assertThat(data.get("root-node-leaf#text"), is("leaf_value1"));
         assertThat(data, hasKey("root-node-leaf@attr"));
         assertThat(data.get("root-node-leaf@attr"), is("attr_value_a"));
-        assertThat(data, hasKey("root-node-leaf2"));
-        assertThat(data.get("root-node-leaf2"), is("leaf_value2"));
+        assertThat(data, hasKey("root-node-leaf2#text"));
+        assertThat(data.get("root-node-leaf2#text"), is("leaf_value2"));
         assertThat(data, hasKey("root-node-leaf2@attr"));
         assertThat(data.get("root-node-leaf2@attr"), is("attr_value_b"));
 

@@ -86,5 +86,5 @@ If you need to work on a different version, you can try to change the setting in
 
 * Only basic DOM tags are implemented. Should be added the support for more advanced tags (all possible tags are in the code, commented out, to give a guideline)
 * The visit of attributes can be improved, according to the DOM logic checking the ATTRIBUTE_NODE type
-* Define a custom char to separate each field of the path. Now it is `-` (please note that `.` returns error) and `@` for attributes
+* Define a custom char to separate each field of the path. Now it is `-` for fields (please note that `.` returns error), `@` for attributes and '#' for DOM-defined keywords
 

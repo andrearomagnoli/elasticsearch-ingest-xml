@@ -77,7 +77,7 @@ This will produce a zip file in `build/distributions`.
 After building the zip file, you can install it like this
 
 ```bash
-/usr/share/elasticsearch/bin/elasticsearch-plugin install file:///path/to/ingest-xml/build/distribution/ingest-xml-5.2.2.zip
+/usr/share/elasticsearch/bin/elasticsearch-plugin install file:///path/to/ingest-xml/build/distribution/ingest-xml-0.0.1.zip
 ```
 
 If you need to work on a different version, you can try to change the setting in `gradle.properties` before compiling. Use at your own risk!
